@@ -25,8 +25,9 @@ require("dotenv").config({
 const axios = require('axios');
 const __client = axios.create({
     withCredentials: true,
-    baseURL: process.env.HOST
- })
+    baseURL: process.env.HOST,
+    maxRedirects : 0
+ });
 
  __client.interceptors.request.use(config => {
     if(__GLOBAL.sessionId != undefined){
@@ -85,6 +86,14 @@ async function authenticationWithJwtToken(){
     await __client.get(process.env.HOST + '/api/security/authentication-support/jwt/logas/' + token).then(response => {
         findSessionId(response);
         __GLOBAL.principalName = response.data.name;
+    }).catch(error => {
+
+        if (error.response && error.response.status === 302) {
+            findSessionId(error.response);
+        } else {
+            throw new Error(error);
+        }
+
     });
 
     console.log(`Principal : '${__GLOBAL.principalName}' with SESSION '${__GLOBAL.sessionId}'`);
@@ -100,9 +109,15 @@ async function logout(){
     await __client.get(process.env.HOST + '/api/logout').then(response => {
         findSessionId(response);
         __GLOBAL.principalName = response.data.name;
-    });
+    }).catch(error => {
 
-    console.log(`Principal : '${__GLOBAL.principalName}' with SESSION '${__GLOBAL.sessionId}'`);
+        if (error.response && error.response.status === 302) {
+            findSessionId(error.response);
+        } else {
+            throw new Error(error);
+        }
+
+    });
 }
 
 // ------------- LIB -------------------------------------------
@@ -114,7 +129,7 @@ function createJwtToken(){
     const payload = {};
     const options = {
         algorithm : 'HS256',
-        expiresIn : '30m',
+        expiresIn : '20m',
         issuer : process.env.JWT_ISSUER,
         subject : process.env.JWT_SUBJECT
     }
